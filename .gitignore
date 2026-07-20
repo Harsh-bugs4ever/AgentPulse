@@ -4,13 +4,14 @@ __pycache__/
 *.egg-info/
 venv/
 .venv/
-backend/.env
+.env
+.env.*
+!.env.example
 
 # Node
 node_modules/
 frontend/.next/
 frontend/out/
-frontend/.env.local
 
 # SigNoz (Foundry generated — large, reproducible)
 pours/
