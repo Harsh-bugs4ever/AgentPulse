@@ -12,7 +12,10 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
-from config import APP_NAME, ENVIRONMENT, OTEL_EXPORTER_OTLP_ENDPOINT
+if __package__:  # Supports both `uvicorn backend.main:app` and running from backend/.
+    from .config import APP_NAME, ENVIRONMENT, OTEL_EXPORTER_OTLP_ENDPOINT
+else:  # pragma: no cover - retained for direct script execution
+    from config import APP_NAME, ENVIRONMENT, OTEL_EXPORTER_OTLP_ENDPOINT
 
 
 def setup_telemetry(app=None):
