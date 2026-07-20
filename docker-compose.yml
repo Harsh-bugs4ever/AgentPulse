@@ -1,0 +1,6 @@
+# SigNoz is managed via Foundry (casting.yaml).
+# Run: foundryctl cast -f casting.yaml
+# Or manually: docker compose -f pours/deployment/compose.yaml up -d
+#
+# This file is kept as a reference pointer.
+# The actual SigNoz compose lives at: pours/deployment/compose.yaml
