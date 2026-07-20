@@ -4,7 +4,7 @@ import time
 from opentelemetry import trace
 from instrumentation import setup_telemetry, get_tracer
 from search import search_tool
-from llm import llm_answer
+from llm import llm_answer, extract_query
 
 def run_agent(question: str) -> str:
     # Initialize OTel and get tracer
@@ -23,8 +23,11 @@ def run_agent(question: str) -> str:
         root_span.set_attribute("start.timestamp", start_time_ms)
         
         try:
-            print(f"\nSearching...")
-            search_results = search_tool(question)
+            print(f"\nExtracting search query...")
+            search_query = extract_query(question, session_id)
+            
+            print(f"Searching for: {search_query}...")
+            search_results = search_tool(search_query)
             
             print(f"Generating answer...")
             answer = llm_answer(question, search_results, session_id)
