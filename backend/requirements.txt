@@ -6,6 +6,7 @@ requests
 python-dotenv
 opentelemetry-sdk
 opentelemetry-api
+opentelemetry-exporter-otlp
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-requests
