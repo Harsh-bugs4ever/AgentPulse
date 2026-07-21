@@ -1,9 +1,16 @@
+import logging
+import os
 import time
 import wikipediaapi
 from opentelemetry import trace
-from instrumentation import get_tracer
+if __package__:
+    from .instrumentation import get_tracer
+else:  # pragma: no cover
+    from instrumentation import get_tracer
 
-def search_tool(query: str) -> str:
+LOGGER = logging.getLogger(__name__)
+
+def search_tool(query: str, session_id: str) -> str:
     """
     Search Wikipedia for the given query.
     Instruments a 'tool.search' span.
@@ -15,8 +22,11 @@ def search_tool(query: str) -> str:
         span.set_attribute("tool.name", "search")
         span.set_attribute("tool.provider", "Wikipedia")
         span.set_attribute("search.query", query)
+        span.set_attribute("session_id", session_id)
         
         try:
+            if os.getenv("BREAK_SEARCH", "false").lower() == "true":
+                raise RuntimeError("tool.search forced failure (BREAK_SEARCH=true)")
             # Find best matching title via Wikipedia search API
             import requests
             search_url = "https://en.wikipedia.org/w/api.php"
@@ -30,7 +40,7 @@ def search_tool(query: str) -> str:
             headers = {
                 "User-Agent": "AgentPulse/1.0 (hackathon project)"
             }
-            resp = requests.get(search_url, params=params, headers=headers)
+            resp = requests.get(search_url, params=params, headers=headers, timeout=10)
             resp.raise_for_status()
             search_data = resp.json().get("query", {}).get("search", [])
             
@@ -63,6 +73,7 @@ def search_tool(query: str) -> str:
                 return f"No Wikipedia article found for '{best_title}'."
                 
         except Exception as e:
+            LOGGER.exception("Wikipedia search failed")
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             span.record_exception(e)
             span.set_attribute("tool.success", False)
