@@ -5,48 +5,58 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  // Mock a nested span tree for the trace detail panel
-  const mockTrace = {
+  try {
+    const res = await fetch(`${backendUrl}/traces/${id}/spans`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      const backendSpans = data.spans || [];
+
+      // Find root span (agent.run or parent-less span)
+      const rootSpan = backendSpans.find((s: any) => s.operationName === 'agent.run' || !s.parentSpanID);
+      const durationMs = rootSpan ? rootSpan.duration : (backendSpans.length > 0 ? Math.max(...backendSpans.map((s: any) => s.duration)) : 0);
+      
+      const hasError = backendSpans.some((s: any) => s.hasError);
+
+      // Map backend spans to frontend format and compute tree depth
+      const mappedSpans = backendSpans.map((span: any) => {
+        let depth = 0;
+        let parentID = span.parentSpanID;
+        // Trace back parents to calculate indentation/nesting depth
+        while (parentID) {
+          const parent = backendSpans.find((s: any) => s.spanID === parentID);
+          if (!parent) break;
+          depth++;
+          parentID = parent.parentSpanID;
+        }
+
+        return {
+          id: span.spanID,
+          name: span.operationName,
+          duration_ms: Math.round(span.duration),
+          status: span.hasError ? 'error' : 'success',
+          depth,
+          attributes: span.tags || {}
+        };
+      });
+
+      return NextResponse.json({
+        trace_id: id,
+        duration_ms: Math.round(durationMs),
+        status: hasError ? 'error' : 'success',
+        spans: mappedSpans
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to fetch spans for trace ${id} from backend:`, err);
+  }
+
+  // Graceful fallback to empty trace details
+  return NextResponse.json({
     trace_id: id,
-    duration_ms: 1850,
-    status: 'success',
-    spans: [
-      {
-        name: 'agent.run',
-        duration_ms: 1850,
-        attributes: {
-          'agent.strategy': 'search-and-answer',
-          'session.id': 'sess_9a8b7c6d'
-        }
-      },
-      {
-        name: 'tool.web_search',
-        duration_ms: 850,
-        attributes: {
-          'tool.name': 'wikipedia',
-          'tool.success': 'true',
-          'search.query': 'Next.js 14 features',
-          'search.results_count': 4
-        }
-      },
-      {
-        name: 'llm',
-        duration_ms: 950,
-        attributes: {
-          'llm.model': 'gpt-4o',
-          'llm.provider': 'openai',
-          'llm.prompt_tokens': 1542,
-          'llm.completion_tokens': 240,
-          'llm.total_tokens': 1782,
-          'llm.cost_usd': 0.012
-        }
-      }
-    ]
-  };
-
-  // simulate network latency
-  await new Promise(r => setTimeout(r, 400));
-
-  return NextResponse.json(mockTrace);
+    duration_ms: 0,
+    status: 'error',
+    spans: []
+  });
 }

@@ -12,36 +12,38 @@ interface AgentStatusProps {
 }
 
 export function AgentStatus({ className, forceStatus = null }: AgentStatusProps) {
-  const [polledStatus, setPolledStatus] = useState<Status>("Healthy");
+  const [fetchedStatus, setFetchedStatus] = useState<Status>("Healthy");
+
+  const fetchHealth = async () => {
+    try {
+      const res = await fetch("/api/health");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status) {
+          setFetchedStatus(data.status as Status);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch health status", err);
+    }
+  };
 
   useEffect(() => {
-    // Poll the /health endpoint every 5 seconds
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/health");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status) {
-            setPolledStatus(data.status as Status);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch health status", err);
-      }
-    }, 5000);
+    // Initial fetch on mount
+    fetchHealth();
 
-    // Initial fetch
-    fetch("/api/health")
-      .then(res => res.json())
-      .then(data => {
-        if (data.status) setPolledStatus(data.status as Status);
-      })
-      .catch(err => console.error("Initial fetch failed", err));
+    // Listen for custom actions/events to refresh status
+    const handleRefresh = () => {
+      fetchHealth();
+    };
 
-    return () => clearInterval(interval);
+    window.addEventListener("agent-health-refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("agent-health-refresh", handleRefresh);
+    };
   }, []);
 
-  const currentStatus = forceStatus || polledStatus;
+  const currentStatus = forceStatus || fetchedStatus;
 
   return (
     <div className={cn(
