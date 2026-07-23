@@ -41,7 +41,7 @@ export function Sidebar() {
     router.refresh();
   };
 
-  if (pathname === "/login" || pathname === "/") return null;
+  if (pathname === "/login" || pathname === "/" || pathname.startsWith("/docs")) return null;
 
   const avatarLetter = user?.email?.[0]?.toUpperCase() ?? user?.user_metadata?.user_name?.[0]?.toUpperCase() ?? "?";
   const displayName = user?.user_metadata?.full_name ?? user?.user_metadata?.user_name ?? user?.email?.split("@")[0] ?? "User";

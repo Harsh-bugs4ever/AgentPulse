@@ -7,6 +7,7 @@ import { Logo } from "@/components/Logo";
 import { InteractiveRobotSpline } from "@/components/ui/interactive-3d-robot";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import ConfettiBackground from "@/components/ui/confetti-background";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { cn } from "@/lib/utils";
 
 const ROBOT_SCENE_URL = "https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode";
@@ -72,6 +73,9 @@ export default function LandingPage() {
               >
                 Sign in
               </Link>
+              <GradientButton asChild variant="variant">
+                <Link href="/docs">Read Docs</Link>
+              </GradientButton>
             </motion.div>
           </div>
           

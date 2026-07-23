@@ -39,19 +39,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes — always allowed
-  const isPublic =
-    pathname === "/" ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon");
-
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
+  // Removed forced redirection for the hackathon demo.
+  // The entire app is now public, and you only go to /login when explicitly clicking Login/Sign In buttons.
 
   return supabaseResponse;
 }
