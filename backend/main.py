@@ -120,7 +120,6 @@ def sidekick_summary(limit: int = 50) -> dict:
     return get_sidekick_data(limit=limit)
 
 
-
 @app.post("/ask", response_model=AskResponse)
 def ask(request: AskRequest) -> AskResponse:
     """

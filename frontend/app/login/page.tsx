@@ -44,7 +44,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   };
 
@@ -63,7 +63,6 @@ export default function LoginPage() {
       setError(error.message);
       setIsGithubLoading(false);
     }
-    // On success, browser redirects automatically — no need to setIsGithubLoading(false)
   };
 
   return (
@@ -85,108 +84,88 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-          {/* Subtle gradient overlay for the glass effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+        <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl p-8 shadow-2xl space-y-6">
+          {error && (
+            <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 flex items-center gap-2 text-xs">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-          <div className="relative">
-            {/* Error banner */}
-            {error && (
-              <div className="mb-4 flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {error}
-              </div>
+          {/* GitHub OAuth Button */}
+          <button
+            type="button"
+            onClick={handleGithubLogin}
+            disabled={isGithubLoading}
+            className="w-full h-11 rounded-xl bg-white text-black font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {isGithubLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Github className="h-4 w-4" />
+                Continue with GitHub
+              </>
             )}
+          </button>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-300 ml-1">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <input
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-10 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                    required
-                  />
-                </div>
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-white/10 w-full" />
+            <span className="bg-black/60 px-3 text-[11px] font-mono text-gray-500 uppercase tracking-widest absolute">
+              or
+            </span>
+          </div>
+
+          {/* Email / Password Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 font-medium">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3 h-4 w-4 text-gray-500" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full h-10 pl-10 pr-3 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-300 ml-1">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-10 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                    required
-                  />
-                </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 font-medium">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-gray-500" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-10 pl-10 pr-3 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                />
               </div>
-
-              <div className="flex items-center justify-between mt-2 mb-6">
-                <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-700 bg-white/5 text-primary focus:ring-primary/50"
-                  />
-                  Remember me
-                </label>
-                <Link href="#" className="text-xs text-primary hover:text-primary/80 transition-colors">
-                  Forgot password?
-                </Link>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || isGithubLoading}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl px-4 py-2.5 text-sm transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 mb-6 flex items-center gap-4">
-              <div className="h-px bg-white/10 flex-1" />
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                Or continue with
-              </span>
-              <div className="h-px bg-white/10 flex-1" />
             </div>
 
             <button
-              type="button"
-              onClick={handleGithubLogin}
-              disabled={isLoading || isGithubLoading}
-              className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer mt-2"
             >
-              {isGithubLoading ? (
+              {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Github className="h-4 w-4" />
+                <>
+                  Sign In <ArrowRight className="h-4 w-4" />
+                </>
               )}
-              Log in with GitHub
             </button>
-          </div>
+          </form>
         </div>
 
-        <p className="text-center text-xs text-gray-500 mt-8">
-          By signing in, you agree to our{" "}
-          <Link href="#" className="text-gray-400 hover:text-white transition-colors">Terms of Service</Link>{" "}
-          and{" "}
-          <Link href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</Link>.
+        <p className="text-center text-xs text-gray-500 mt-6">
+          Need access? Ask your administrator or team lead.
         </p>
       </div>
     </div>

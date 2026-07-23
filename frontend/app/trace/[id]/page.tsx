@@ -12,7 +12,6 @@ import {
   AlertCircle,
   HeartPulse,
 } from "lucide-react";
-
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -221,102 +220,103 @@ export default function TraceDetailPage({
               <AlertCircle className="h-4 w-4 shrink-0" />
               No span data for this trace. It was likely recorded before span persistence was enabled — run a new query to get full span hierarchies.
             </div>
-          ) : traceData.spans.map((span) => {
+          ) : (
+            traceData.spans.map((span) => {
+              const accent = spanAccent(span);
+              const attrs = span.attributes
+                ? Object.entries(span.attributes).filter(
+                    ([, v]) => v !== null && v !== undefined && v !== ""
+                  )
+                : [];
 
-            const accent = spanAccent(span);
-            const attrs = span.attributes
-              ? Object.entries(span.attributes).filter(
-                  ([, v]) => v !== null && v !== undefined && v !== ""
-                )
-              : [];
-
-            return (
-              <Card
-                key={span.id}
-                className={cn(
-                  "overflow-hidden border transition-colors bg-background",
-                  accent.border
-                )}
-              >
-                <CardContent className="p-4">
-                  {/* Span name row */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Depth connector */}
-                    {span.depth > 0 && (
-                      <span
-                        className="inline-block h-px bg-border"
-                        style={{ width: `${span.depth * 1.25}rem` }}
-                      />
-                    )}
-
-                    {/* Span name pill */}
-                    <div className="flex items-center gap-2 bg-muted/60 border border-border rounded-md px-3 py-1.5">
-                      <Box className={cn("h-3.5 w-3.5 shrink-0", accent.icon)} />
-                      <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
-                        {span.name}
-                      </span>
-                    </div>
-
-                    {/* Duration badge */}
-                    <span className="text-xs text-muted-foreground bg-background border border-border px-2 py-1 rounded-md font-mono">
-                      {span.duration_ms}ms
-                    </span>
-
-                    {/* Status badges */}
-                    {span.status === "error" && (
-                      <span className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 px-2 py-1 rounded-md">
-                        error
-                      </span>
-                    )}
-                    {(span.name === "tool.wikipedia_fallback" ||
-                      span.name === "agent.heal" ||
-                      span.attributes?.["agent.healed"] === true ||
-                      span.attributes?.["agent.healed"] === "true") && (
-                      <span className="text-xs font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-md">
-                        healed
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Duration bar */}
-                  <DurationBar
-                    duration={span.duration_ms}
-                    max={maxDuration}
-                    status={span.status}
-                    healed={
-                      span.name === "tool.wikipedia_fallback" ||
-                      span.name === "agent.heal" ||
-                      span.attributes?.["agent.healed"] === true ||
-                      span.attributes?.["agent.healed"] === "true"
-                    }
-                  />
-
-                  {/* Attributes */}
-                  {attrs.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
-                      {attrs.map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex flex-col bg-muted/20 rounded-md p-2.5 border border-border/50"
-                        >
-                          <span className="text-xs text-muted-foreground font-mono tracking-wide mb-1">
-                            {key}
-                          </span>
-                          <span className="text-sm text-foreground font-semibold break-all leading-snug">
-                            {typeof value === "boolean"
-                              ? value
-                                ? "true"
-                                : "false"
-                              : String(value)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              return (
+                <Card
+                  key={span.id}
+                  className={cn(
+                    "overflow-hidden border transition-colors bg-background",
+                    accent.border
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                >
+                  <CardContent className="p-4">
+                    {/* Span name row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Depth connector */}
+                      {span.depth > 0 && (
+                        <span
+                          className="inline-block h-px bg-border"
+                          style={{ width: `${span.depth * 1.25}rem` }}
+                        />
+                      )}
+
+                      {/* Span name pill */}
+                      <div className="flex items-center gap-2 bg-muted/60 border border-border rounded-md px-3 py-1.5">
+                        <Box className={cn("h-3.5 w-3.5 shrink-0", accent.icon)} />
+                        <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
+                          {span.name}
+                        </span>
+                      </div>
+
+                      {/* Duration badge */}
+                      <span className="text-xs text-muted-foreground bg-background border border-border px-2 py-1 rounded-md font-mono">
+                        {span.duration_ms}ms
+                      </span>
+
+                      {/* Status badges */}
+                      {span.status === "error" && (
+                        <span className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 px-2 py-1 rounded-md">
+                          error
+                        </span>
+                      )}
+                      {(span.name === "tool.wikipedia_fallback" ||
+                        span.name === "agent.heal" ||
+                        span.attributes?.["agent.healed"] === true ||
+                        span.attributes?.["agent.healed"] === "true") && (
+                        <span className="text-xs font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-md">
+                          healed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Duration bar */}
+                    <DurationBar
+                      duration={span.duration_ms}
+                      max={maxDuration}
+                      status={span.status}
+                      healed={
+                        span.name === "tool.wikipedia_fallback" ||
+                        span.name === "agent.heal" ||
+                        span.attributes?.["agent.healed"] === true ||
+                        span.attributes?.["agent.healed"] === "true"
+                      }
+                    />
+
+                    {/* Attributes */}
+                    {attrs.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                        {attrs.map(([key, value]) => (
+                          <div
+                            key={key}
+                            className="flex flex-col bg-muted/20 rounded-md p-2.5 border border-border/50"
+                          >
+                            <span className="text-xs text-muted-foreground font-mono tracking-wide mb-1">
+                              {key}
+                            </span>
+                            <span className="text-sm text-foreground font-semibold break-all leading-snug">
+                              {typeof value === "boolean"
+                                ? value
+                                  ? "true"
+                                  : "false"
+                                : String(value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
