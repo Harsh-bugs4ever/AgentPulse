@@ -19,6 +19,31 @@ export default function InteractiveDashboard() {
   const [cost, setCost] = useState(0.000);
   const [traces, setTraces] = useState<Trace[]>([]);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [demoActionLoading, setDemoActionLoading] = useState(false);
+
+  const handleBreak = async () => {
+    setDemoActionLoading(true);
+    try {
+      await fetch("/api/break", { method: "POST" });
+      window.dispatchEvent(new CustomEvent("agent-health-refresh"));
+    } catch (err) {
+      console.error("Failed to break agent", err);
+    } finally {
+      setDemoActionLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setDemoActionLoading(true);
+    try {
+      await fetch("/api/reset", { method: "POST" });
+      window.dispatchEvent(new CustomEvent("agent-health-refresh"));
+    } catch (err) {
+      console.error("Failed to reset agent", err);
+    } finally {
+      setDemoActionLoading(false);
+    }
+  };
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +109,20 @@ export default function InteractiveDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleBreak}
+              disabled={demoActionLoading || isStreaming}
+              className="px-4 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 border border-destructive/20 rounded-full transition-colors disabled:opacity-50"
+            >
+              Break Agent
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={demoActionLoading || isStreaming}
+              className="px-4 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 border border-primary/20 rounded-full transition-colors disabled:opacity-50"
+            >
+              Reset Agent
+            </button>
             <Link 
               href="/login" 
               className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full transition-colors"
