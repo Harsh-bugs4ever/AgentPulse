@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Activity, Receipt, Sparkles, ShieldAlert, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
@@ -35,6 +34,7 @@ export default function LandingPage() {
     };
   }, []);
 
+export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-primary/20 overflow-x-hidden relative no-scrollbar">
       <ConfettiBackground />
