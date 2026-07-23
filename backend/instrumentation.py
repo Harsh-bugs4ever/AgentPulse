@@ -18,8 +18,17 @@ else:  # pragma: no cover - retained for direct script execution
     from config import APP_NAME, ENVIRONMENT, OTEL_EXPORTER_OTLP_ENDPOINT
 
 
+_configured = False
+
+
 def setup_telemetry(app=None):
     """Initialize OpenTelemetry with OTLP gRPC exporter pointed at SigNoz."""
+
+    global _configured
+    if _configured:
+        if app:
+            FastAPIInstrumentor.instrument_app(app)
+        return trace.get_tracer(APP_NAME)
 
     resource = Resource.create({
         "service.name": APP_NAME,
@@ -36,6 +45,7 @@ def setup_telemetry(app=None):
 
     provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
     trace.set_tracer_provider(provider)
+    _configured = True
 
     # Auto-instrument outgoing HTTP requests
     RequestsInstrumentor().instrument()

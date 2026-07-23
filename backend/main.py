@@ -13,16 +13,37 @@ if __package__:
     from .healing import get_status, force_search_failure, reset_healing
     from .store import get_traces, get_spans, get_cost_summary, get_sidekick_data
     from .config import ALLOWED_ORIGINS
+    from .sidekick import sidekick
 else:
     from agent import run_agent
     from instrumentation import setup_telemetry
+    from healing import get_status, force_search_failure, reset_healing
+    from store import get_traces, get_spans, get_cost_summary, get_sidekick_data
+    from config import ALLOWED_ORIGINS
+    from sidekick import sidekick
 
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
-app = FastAPI(title="AgentPulse API")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    sidekick.start()
+    try:
+        yield
+    finally:
+        await sidekick.stop()
+
+
+app = FastAPI(title="AgentPulse API", lifespan=lifespan)
 setup_telemetry(app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Request / Response models ──────────────────────────────────────────────────
@@ -99,6 +120,12 @@ def costs_summary() -> dict:
     return get_cost_summary()
 
 
+@app.get("/cost")
+def cost_summary() -> dict:
+    """Compatibility endpoint for the documented cost API."""
+    return get_cost_summary()
+
+
 @app.get("/sidekick")
 def sidekick_summary(limit: int = 50) -> dict:
     """
@@ -106,6 +133,12 @@ def sidekick_summary(limit: int = 50) -> dict:
     All data is computed from the local Supabase store.
     """
     return get_sidekick_data(limit=limit)
+
+
+@app.get("/investigation")
+def investigation() -> dict:
+    """Return the live SigNoz/Groq Sidekick investigation state."""
+    return sidekick.state()
 
 
 @app.post("/ask", response_model=AskResponse)

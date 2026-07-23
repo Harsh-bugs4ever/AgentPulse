@@ -53,7 +53,7 @@ export async function GET() {
                       : '—',
         time:     getRelativeTime(t.timestamp || t.created_at),
         tool:     t.strategy  || t.tags?.['agent.strategy'] || t.tags?.['tool.name'] || 'agent.run',
-        healed:   t.healed    ?? t.tags?.['agent.healed'] === 'true' ?? false,
+        healed:   t.healed ?? (t.tags?.['agent.healed'] === 'true'),
         cost:     t.total_cost_usd != null ? `$${t.total_cost_usd.toFixed(6)}` : null,
       }));
 

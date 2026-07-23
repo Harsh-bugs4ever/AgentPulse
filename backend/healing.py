@@ -13,9 +13,13 @@ Fallback spans are persisted to Supabase via store.py.
 import time
 import uuid
 import wikipediaapi
-from instrumentation import get_tracer
 from opentelemetry import trace
-import store
+try:
+    from .instrumentation import get_tracer
+    from . import store
+except ImportError:  # direct execution from backend/
+    from instrumentation import get_tracer
+    import store
 
 
 # ── Thresholds ──

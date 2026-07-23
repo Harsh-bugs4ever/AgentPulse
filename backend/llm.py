@@ -11,11 +11,16 @@ via store.py so the Cost Watchdog dashboard works without SigNoz APIs.
 import time
 from groq import Groq
 from opentelemetry import trace
-from instrumentation import get_tracer
-from config import GROQ_API_KEY, GROQ_MODEL
-from cost import calculate_cost
+try:
+    from .instrumentation import get_tracer
+    from .config import GROQ_API_KEY, GROQ_MODEL
+    from .cost import calculate_cost
+except ImportError:  # direct execution from backend/
+    from instrumentation import get_tracer
+    from config import GROQ_API_KEY, GROQ_MODEL
+    from cost import calculate_cost
 
-def llm_answer(question: str, context: str, session_id: str) -> str:
+def llm_answer(question: str, context: str, session_id: str) -> tuple[str, float]:
     """
     Generate an answer using Groq LLM based on the search context.
     Instruments an 'llm.answer' span.
@@ -64,7 +69,7 @@ def llm_answer(question: str, context: str, session_id: str) -> str:
             
             span.set_attribute("llm.latency_ms", int((time.time() - start_time) * 1000))
             
-            return answer
+            return answer, cost
             
         except Exception as e:
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
@@ -75,7 +80,7 @@ def llm_answer(question: str, context: str, session_id: str) -> str:
             span.set_attribute("error.stacktrace", traceback.format_exc())
             raise
 
-def extract_query(question: str, session_id: str) -> str:
+def extract_query(question: str, session_id: str) -> tuple[str, float]:
     """
     Extract a Wikipedia search query from the user's question using Groq LLM.
     Instruments an 'llm.extract_query' span.
@@ -124,7 +129,7 @@ def extract_query(question: str, session_id: str) -> str:
             
             span.set_attribute("llm.latency_ms", int((time.time() - start_time) * 1000))
             
-            return query
+            return query, cost
             
         except Exception as e:
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))

@@ -18,11 +18,20 @@ import sys
 import uuid
 import time
 from opentelemetry import trace
-from instrumentation import setup_telemetry, get_tracer
-from search import search_tool
-from llm import llm_answer, extract_query
+try:
+    from .instrumentation import setup_telemetry
+    from .search import search_tool
+    from .llm import llm_answer, extract_query
+    from . import store
+    from .healing import is_healing_active, is_force_fail
+except ImportError:  # direct execution from backend/
+    from instrumentation import setup_telemetry
+    from search import search_tool
+    from llm import llm_answer, extract_query
+    import store
+    from healing import is_healing_active, is_force_fail
 
-def run_agent(question: str) -> str:
+def run_agent(question: str) -> dict[str, object]:
     # Initialize OTel and get tracer
     tracer = setup_telemetry()
     
@@ -34,19 +43,25 @@ def run_agent(question: str) -> str:
         root_span.set_attribute("agent.name", "research-agent")
         root_span.set_attribute("agent.version", "1.0")
         root_span.set_attribute("session.id", session_id)
+        root_span.set_attribute("session_id", session_id)
         root_span.set_attribute("request.id", request_id)
         root_span.set_attribute("user.question", question)
         root_span.set_attribute("start.timestamp", start_time_ms)
         
         try:
             print(f"\nExtracting search query...")
-            search_query = extract_query(question, session_id)
+            search_query, planner_cost = extract_query(question, session_id)
             
             print(f"Searching for: {search_query}...")
             search_results = search_tool(search_query)
             
             print(f"Generating answer...")
-            answer = llm_answer(question, search_results, session_id)
+            answer, answer_cost = llm_answer(question, search_results, session_id)
+            total_cost = planner_cost + answer_cost
+            strategy = "wikipedia_fallback" if (is_healing_active() or is_force_fail()) else "web_search"
+            trace_id = format(root_span.get_span_context().trace_id, "032x")
+            root_span.set_attribute("agent.strategy", strategy)
+            root_span.set_attribute("agent.healed", strategy == "wikipedia_fallback")
             
             with tracer.start_as_current_span("agent.finish") as finish_span:
                 finish_span.set_attribute("agent.success", True)
@@ -57,7 +72,11 @@ def run_agent(question: str) -> str:
                 execution_time_ms = int(time.time() * 1000) - start_time_ms
                 finish_span.set_attribute("execution.time_ms", execution_time_ms)
             
-            return answer
+            store.save_trace(trace_id=trace_id, session_id=session_id, request_id=request_id, question=question,
+                answer=answer, status="success", strategy=strategy, healed=strategy == "wikipedia_fallback",
+                total_cost_usd=total_cost, duration_ms=int(time.time() * 1000) - start_time_ms)
+            return {"answer": answer, "trace_id": trace_id, "session_id": session_id,
+                    "cost_usd": round(total_cost, 8), "strategy": strategy}
             
         except Exception as e:
             root_span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
@@ -68,6 +87,10 @@ def run_agent(question: str) -> str:
                 execution_time_ms = int(time.time() * 1000) - start_time_ms
                 finish_span.set_attribute("execution.time_ms", execution_time_ms)
             
+            trace_id = format(root_span.get_span_context().trace_id, "032x")
+            store.save_trace(trace_id=trace_id, session_id=session_id, request_id=request_id, question=question,
+                status="error", strategy="web_search", healed=False, total_cost_usd=0,
+                duration_ms=int(time.time() * 1000) - start_time_ms)
             raise
 
 if __name__ == "__main__":

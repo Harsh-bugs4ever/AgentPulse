@@ -18,7 +18,11 @@ import logging
 from typing import Any
 from datetime import datetime, timezone
 
-from supabase import create_client, Client
+try:
+    from supabase import create_client, Client
+except ImportError:  # Optional dashboard persistence must not prevent API startup.
+    create_client = None
+    Client = Any
 
 if __package__:
     from .config import SUPABASE_URL, SUPABASE_SECRET_KEY
@@ -37,7 +41,7 @@ def _get_client() -> Client | None:
     global _client
     if _client is not None:
         return _client
-    if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+    if create_client is None or not SUPABASE_URL or not SUPABASE_SECRET_KEY:
         LOGGER.warning("[store] SUPABASE_URL or SUPABASE_SECRET_KEY not set — store is disabled.")
         return None
     try:

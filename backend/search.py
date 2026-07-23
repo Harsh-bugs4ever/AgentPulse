@@ -5,14 +5,21 @@ Instruments a 'tool.search' span and persists span metadata to Supabase
 so trace detail pages work without querying SigNoz.
 """
 
+import logging
 import time
 import traceback
 import uuid
 import requests
 import wikipediaapi
 from opentelemetry import trace
-from instrumentation import get_tracer
-import store
+try:
+    from .instrumentation import get_tracer
+    from . import store
+    from .healing import is_force_fail, record_search_failure, record_search_success, wikipedia_fallback
+except ImportError:  # direct `uvicorn main:app` execution from backend/
+    from instrumentation import get_tracer
+    import store
+    from healing import is_force_fail, record_search_failure, record_search_success, wikipedia_fallback
 
 
 def _span_id_hex(span) -> str:
@@ -48,8 +55,25 @@ def search_tool(query: str, session_id: str) -> str:
         span.set_attribute("tool.name", "search")
         span.set_attribute("tool.provider", "Wikipedia")
         span.set_attribute("search.query", query)
+        span.set_attribute("session_id", session_id)
 
         try:
+            if is_force_fail():
+                error = RuntimeError("Intentional demo search failure")
+                record_search_failure()
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(error)))
+                span.record_exception(error)
+                span.set_attribute("tool.success", False)
+                span.set_attribute("tool.status", "error")
+                span.set_attribute("error.type", type(error).__name__)
+                span.set_attribute("error.message", str(error))
+                end_time = time.time()
+                store.save_span(span_id=_span_id_hex(span), trace_id=_trace_id_hex(span), name="tool.search",
+                    start_time=start_time, end_time=end_time, duration_ms=int((end_time-start_time)*1000), status="error",
+                    attributes={"tool.name": "search", "tool.status": "error", "session_id": session_id,
+                                "error.type": type(error).__name__, "error.message": str(error)})
+                # Preserve a useful demo response while exporting a real failed span.
+                return wikipedia_fallback(query)
             search_url = "https://en.wikipedia.org/w/api.php"
             params = {
                 "action":   "query",
