@@ -10,13 +10,13 @@ if __package__:
     from .agent import run_agent
     from .instrumentation import setup_telemetry
     from .healing import get_status, force_search_failure, reset_healing
-    from .store import get_traces, get_spans, get_cost_summary
+    from .store import get_traces, get_spans, get_cost_summary, get_sidekick_data
     from .config import ALLOWED_ORIGINS
 else:
     from agent import run_agent
     from instrumentation import setup_telemetry
     from healing import get_status, force_search_failure, reset_healing
-    from store import get_traces, get_spans, get_cost_summary
+    from store import get_traces, get_spans, get_cost_summary, get_sidekick_data
     from config import ALLOWED_ORIGINS
 
 
@@ -110,6 +110,14 @@ def costs_summary() -> dict:
     """Return LLM cost summary computed from the local Supabase store."""
     return get_cost_summary()
 
+
+@app.get("/sidekick")
+def sidekick_summary(limit: int = 50) -> dict:
+    """
+    Return SRE Sidekick data: error-rate timeline, active investigations, health stats.
+    All data is computed from the local Supabase store.
+    """
+    return get_sidekick_data(limit=limit)
 
 
 @app.post("/ask", response_model=AskResponse)

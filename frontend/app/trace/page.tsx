@@ -43,8 +43,6 @@ export default function TraceList() {
 
   useEffect(() => {
     fetchTraces();
-    const interval = setInterval(fetchTraces, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const filteredTraces = traces.filter((trace) =>
