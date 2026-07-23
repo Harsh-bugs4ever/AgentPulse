@@ -43,6 +43,7 @@ export function Sidebar() {
 
   if (pathname === "/login" || pathname === "/" || pathname.startsWith("/docs")) return null;
 
+  const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
   const avatarLetter = user?.email?.[0]?.toUpperCase() ?? user?.user_metadata?.user_name?.[0]?.toUpperCase() ?? "?";
   const displayName = user?.user_metadata?.full_name ?? user?.user_metadata?.user_name ?? user?.email?.split("@")[0] ?? "User";
   const displayEmail = user?.email ?? "";
@@ -94,8 +95,16 @@ export function Sidebar() {
         <div className="px-4 pt-4 mt-2 border-t border-border">
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
             {/* Avatar */}
-            <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-              <span className="text-sm font-semibold text-primary">{avatarLetter}</span>
+            <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="h-full w-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-primary">{avatarLetter}</span>
+              )}
             </div>
             {/* Name + email */}
             <div className="flex-1 min-w-0">

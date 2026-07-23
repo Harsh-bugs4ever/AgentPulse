@@ -319,3 +319,159 @@ def get_cost_summary() -> dict:
     except Exception as exc:
         LOGGER.error("[store] get_cost_summary failed: %s", exc)
         return {"total_cost": 0, "today_cost": 0, "request_count": 0, "average_cost": 0, "per_session": {}, "series": []}
+
+
+def get_sidekick_data(limit: int = 50) -> dict:
+    """
+    Compute SRE Sidekick dashboard data from Supabase traces.
+
+    Returns:
+        dict with:
+          - error_rate_series: list of {time, rate, total, errors} for the chart
+          - investigations: list of error/healed traces with investigation details
+          - stats: {total_traces, error_count, healed_count, error_rate_pct, healthy_pct}
+    """
+    client = _get_client()
+    empty = {
+        "error_rate_series": [],
+        "investigations": [],
+        "stats": {
+            "total_traces": 0,
+            "error_count": 0,
+            "healed_count": 0,
+            "error_rate_pct": 0.0,
+            "healthy_pct": 100.0,
+        },
+    }
+    if client is None:
+        return empty
+
+    try:
+        resp = (
+            client.table("traces")
+            .select("trace_id, question, status, strategy, healed, total_cost_usd, duration_ms, created_at")
+            .order("created_at", desc=False)
+            .limit(limit)
+            .execute()
+        )
+        rows = resp.data or []
+
+        if not rows:
+            return empty
+
+        # ── Stats ────────────────────────────────────────────────────────────
+        total       = len(rows)
+        error_rows  = [r for r in rows if r.get("status") == "error"]
+        healed_rows = [r for r in rows if r.get("healed")]
+        error_count = len(error_rows)
+        healed_count = len(healed_rows)
+        error_rate  = round(error_count / total * 100, 1) if total > 0 else 0.0
+
+        # ── Error-rate timeline (bucket by 10-minute windows) ─────────────────
+        buckets: dict[str, dict] = {}
+        for row in rows:
+            raw_ts = row.get("created_at", "")
+            try:
+                dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                # Round down to the nearest 10-minute mark
+                minute_bucket = (dt.minute // 10) * 10
+                bucket_key = dt.strftime(f"%H:{minute_bucket:02d}")
+            except Exception:
+                bucket_key = "??"
+
+            if bucket_key not in buckets:
+                buckets[bucket_key] = {"time": bucket_key, "total": 0, "errors": 0}
+            buckets[bucket_key]["total"] += 1
+            if row.get("status") == "error":
+                buckets[bucket_key]["errors"] += 1
+
+        error_rate_series = []
+        for key in sorted(buckets.keys()):
+            b = buckets[key]
+            rate = round(b["errors"] / b["total"] * 100, 1) if b["total"] > 0 else 0.0
+            error_rate_series.append({
+                "time":   b["time"],
+                "rate":   rate,
+                "total":  b["total"],
+                "errors": b["errors"],
+            })
+
+        # ── Investigations: error traces + healed traces ─────────────────────
+        investigation_rows = [
+            r for r in rows
+            if r.get("status") == "error" or r.get("healed")
+        ]
+        # Most recent first
+        investigation_rows = sorted(
+            investigation_rows,
+            key=lambda r: r.get("created_at", ""),
+            reverse=True
+        )[:10]
+
+        investigations = []
+        for row in investigation_rows:
+            is_error  = row.get("status") == "error"
+            is_healed = bool(row.get("healed"))
+            strategy  = row.get("strategy", "web_search")
+
+            if is_error and not is_healed:
+                severity = "error"
+                title    = "Search Failure Detected"
+                summary  = (
+                    f"Agent failed while processing: \"{(row.get('question') or '')[:80]}\".\n"
+                    f"The primary search tool returned no results. "
+                    f"Failure threshold was not yet reached — no fallback activated."
+                )
+                recommendation = "Trigger a reset if failures continue. Monitor tool.search latency."
+            elif is_healed:
+                severity = "healed"
+                title    = "Self-Healing Activated"
+                summary  = (
+                    f"Primary search failed for: \"{(row.get('question') or '')[:80]}\".\n"
+                    f"Agent automatically switched to {strategy.replace('_', ' ')} strategy "
+                    f"and successfully generated an answer."
+                )
+                recommendation = (
+                    f"Recovery successful via {strategy.replace('_', ' ')}. "
+                    "Consider investigating the root cause of the primary search failure."
+                )
+            else:
+                continue
+
+            raw_ts = row.get("created_at", "")
+            try:
+                dt       = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                time_str = dt.strftime("%H:%M")
+            except Exception:
+                time_str = "—"
+
+            investigations.append({
+                "trace_id":       row.get("trace_id", ""),
+                "question":       row.get("question", ""),
+                "status":         row.get("status", ""),
+                "strategy":       strategy,
+                "healed":         is_healed,
+                "severity":       severity,
+                "title":          title,
+                "summary":        summary,
+                "recommendation": recommendation,
+                "time":           time_str,
+                "duration_ms":    row.get("duration_ms", 0),
+                "cost_usd":       row.get("total_cost_usd", 0.0),
+            })
+
+        return {
+            "error_rate_series": error_rate_series,
+            "investigations":    investigations,
+            "stats": {
+                "total_traces":    total,
+                "error_count":     error_count,
+                "healed_count":    healed_count,
+                "error_rate_pct":  error_rate,
+                "healthy_pct":     round(100 - error_rate, 1),
+            },
+        }
+
+    except Exception as exc:
+        LOGGER.error("[store] get_sidekick_data failed: %s", exc)
+        return empty

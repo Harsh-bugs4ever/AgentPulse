@@ -39,6 +39,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Redirect to dashboard if already logged in and trying to access login page
+  if (user && pathname.startsWith("/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
   // Removed forced redirection for the hackathon demo.
   // The entire app is now public, and you only go to /login when explicitly clicking Login/Sign In buttons.
 

@@ -57,7 +57,7 @@ export default function ConfettiBackground() {
     // Initialize confetti pieces
     const initConfetti = () => {
       confettiRef.current = [];
-      for (let i = 0; i < 180; i++) {
+      for (let i = 0; i < 65; i++) {
         confettiRef.current.push({
           // Start from entire top area and some sides to cover full screen
           x: -canvas.width * 0.2 + Math.random() * canvas.width * 1.4,
@@ -101,13 +101,6 @@ export default function ConfettiBackground() {
       ctx.translate(projectedX, projectedY);
       ctx.rotate(piece.rotation);
       ctx.globalAlpha = opacity;
-      
-      // Add depth-based shadow
-      const shadowIntensity = Math.min(scale * 0.3, 0.2);
-      ctx.shadowColor = `rgba(0, 0, 0, ${shadowIntensity})`;
-      ctx.shadowBlur = scale * 4;
-      ctx.shadowOffsetX = scale * 3;
-      ctx.shadowOffsetY = scale * 3;
 
       ctx.fillStyle = piece.color;
 
