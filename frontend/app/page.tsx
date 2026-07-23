@@ -5,6 +5,9 @@ import { ArrowRight, CheckCircle2, Clock, Terminal, Activity, Loader2, Sparkles,
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { AgentStatus } from "@/components/AgentStatus";
+import { Logo } from "@/components/Logo";
+import { TraceDetail } from "@/components/TraceDetail";
 
 type Trace = { id: string; name: string; tool: string; status: string };
 
@@ -15,6 +18,7 @@ export default function InteractiveDashboard() {
   const [answer, setAnswer] = useState("");
   const [cost, setCost] = useState(0.000);
   const [traces, setTraces] = useState<Trace[]>([]);
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +77,7 @@ export default function InteractiveDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-medium tracking-tight text-foreground flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
+              <Logo className="h-8 w-8 text-primary" />
               AgentPulse
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">Interactive Live Observability</p>
@@ -86,16 +90,7 @@ export default function InteractiveDashboard() {
             >
               Login
             </Link>
-            <div className={cn(
-              "flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-medium transition-colors duration-500",
-              status === "Healthy" ? "bg-primary/10 border-primary/20 text-primary" :
-              status === "Investigating" ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
-              "bg-amber-500/10 border-amber-500/20 text-amber-400"
-            )}>
-              {status === "Investigating" ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-               status === "Healthy" ? <CheckCircle2 className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
-              {status}
-            </div>
+            <AgentStatus forceStatus={status !== "Healthy" ? status : null} />
           </div>
         </div>
 
@@ -137,13 +132,20 @@ export default function InteractiveDashboard() {
               ) : (
                 <div className="divide-y divide-border">
                   {traces.map((trace, i) => (
-                    <div key={i} className="p-4 animate-in slide-in-from-left-4 fade-in duration-300">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "h-2 w-2 rounded-full",
-                          trace.status === "success" ? "bg-primary" : "bg-destructive"
-                        )} />
-                        <span className="font-mono text-sm text-foreground font-medium">{trace.name}</span>
+                    <div 
+                      key={i} 
+                      onClick={() => setSelectedTraceId(trace.id)}
+                      className="p-4 animate-in slide-in-from-left-4 fade-in duration-300 hover:bg-secondary/30 cursor-pointer transition-colors group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "h-2 w-2 rounded-full",
+                            trace.status === "success" ? "bg-primary" : "bg-destructive"
+                          )} />
+                          <span className="font-mono text-sm text-foreground font-medium">{trace.name}</span>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/70 transition-colors" />
                       </div>
                       <div className="flex items-center gap-4 mt-2 ml-5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Terminal className="h-3 w-3" /> {trace.tool}</span>
@@ -191,6 +193,7 @@ export default function InteractiveDashboard() {
         </div>
 
       </div>
+      <TraceDetail traceId={selectedTraceId} onClose={() => setSelectedTraceId(null)} />
     </div>
   );
 }
