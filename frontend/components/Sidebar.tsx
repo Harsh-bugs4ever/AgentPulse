@@ -8,7 +8,7 @@ import { AgentStatus } from "./AgentStatus";
 import { Logo } from "./Logo";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Traces", href: "/trace", icon: Activity },
   { name: "SRE Sidekick", href: "/sidekick", icon: ShieldAlert },
   { name: "Cost Watchdog", href: "/cost", icon: Receipt },
@@ -18,7 +18,7 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
 
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/") return null;
 
   return (
     <div className="flex h-screen w-64 flex-col border-r border-border bg-background pt-8 pb-4">
