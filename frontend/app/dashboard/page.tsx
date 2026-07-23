@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2, Clock, Terminal, Activity, Loader2, Sparkles, DollarSign } from "lucide-react";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { AgentStatus } from "@/components/AgentStatus";
@@ -12,6 +14,18 @@ import { TraceDetail } from "@/components/TraceDetail";
 type Trace = { id: string; name: string; tool: string; status: string };
 
 export default function InteractiveDashboard() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState<"Healthy" | "Investigating" | "Healing">("Healthy");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -19,6 +33,31 @@ export default function InteractiveDashboard() {
   const [cost, setCost] = useState(0.000);
   const [traces, setTraces] = useState<Trace[]>([]);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [demoActionLoading, setDemoActionLoading] = useState(false);
+
+  const handleBreak = async () => {
+    setDemoActionLoading(true);
+    try {
+      await fetch("/api/break", { method: "POST" });
+      window.dispatchEvent(new CustomEvent("agent-health-refresh"));
+    } catch (err) {
+      console.error("Failed to break agent", err);
+    } finally {
+      setDemoActionLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setDemoActionLoading(true);
+    try {
+      await fetch("/api/reset", { method: "POST" });
+      window.dispatchEvent(new CustomEvent("agent-health-refresh"));
+    } catch (err) {
+      console.error("Failed to reset agent", err);
+    } finally {
+      setDemoActionLoading(false);
+    }
+  };
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,12 +123,28 @@ export default function InteractiveDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            <Link 
-              href="/login" 
-              className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full transition-colors"
+            <button
+              onClick={handleBreak}
+              disabled={demoActionLoading || isStreaming}
+              className="px-4 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 border border-destructive/20 rounded-full transition-colors disabled:opacity-50"
             >
-              Login
-            </Link>
+              Break Agent
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={demoActionLoading || isStreaming}
+              className="px-4 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 border border-primary/20 rounded-full transition-colors disabled:opacity-50"
+            >
+              Reset Agent
+            </button>
+            {!user && (
+              <Link 
+                href="/login" 
+                className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full transition-colors"
+              >
+                Login
+              </Link>
+            )}
             <AgentStatus forceStatus={status !== "Healthy" ? status : null} />
           </div>
         </div>

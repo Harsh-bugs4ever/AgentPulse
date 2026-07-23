@@ -1,20 +1,31 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const now = new Date();
-  const seconds = now.getSeconds();
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   
-  let status = "Healthy";
-  
-  // Cycle every minute to simulate states for demo:
-  // 0-29s: Healthy
-  // 30-44s: Healing
-  // 45-59s: Recovered
-  if (seconds >= 30 && seconds < 45) {
-    status = "Healing";
-  } else if (seconds >= 45 && seconds < 60) {
-    status = "Recovered";
+  try {
+    const res = await fetch(`${backendUrl}/health`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      let status = 'Healthy';
+
+      // Map backend statuses to frontend expected statuses
+      if (data.status === 'idle') {
+        status = 'Healthy';
+      } else if (data.status === 'degraded') {
+        status = 'Investigating';
+      } else if (data.status === 'healing') {
+        status = 'Healing';
+      } else if (data.status === 'recovered') {
+        status = 'Recovered';
+      }
+
+      return NextResponse.json({ status });
+    }
+  } catch (err) {
+    console.error("Failed to fetch health status from backend:", err);
   }
-  
-  return NextResponse.json({ status });
+
+  // Graceful fallback to Healthy if backend is unreachable
+  return NextResponse.json({ status: 'Healthy' });
 }

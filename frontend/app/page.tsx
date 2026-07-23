@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Activity, Receipt, Sparkles, ShieldAlert, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
@@ -7,13 +8,35 @@ import { Logo } from "@/components/Logo";
 import { InteractiveRobotSpline } from "@/components/ui/interactive-3d-robot";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import ConfettiBackground from "@/components/ui/confetti-background";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 
 const ROBOT_SCENE_URL = "https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode";
 
 export default function LandingPage() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.add("no-scrollbar");
+    document.body.classList.add("no-scrollbar");
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      document.documentElement.classList.remove("no-scrollbar");
+      document.body.classList.remove("no-scrollbar");
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-primary/20 overflow-x-hidden relative">
+    <div className="min-h-screen bg-background font-sans selection:bg-primary/20 overflow-x-hidden relative no-scrollbar">
       <ConfettiBackground />
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-[1400px] mx-auto">
@@ -22,12 +45,32 @@ export default function LandingPage() {
           <span className="font-medium text-lg tracking-tight">AgentPulse</span>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Log in
-          </Link>
-          <Link href="/dashboard" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors">
-            Get Started
-          </Link>
+          {user ? (
+            <>
+              <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Dashboard
+              </Link>
+              <button
+                onClick={async () => {
+                  const supabase = createClient();
+                  await supabase.auth.signOut();
+                  setUser(null);
+                }}
+                className="text-sm font-medium bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-colors"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Log in
+              </Link>
+              <Link href="/dashboard" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-colors">
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -64,14 +107,17 @@ export default function LandingPage() {
                 href="/dashboard" 
                 className="group flex items-center gap-2 bg-primary text-primary-foreground font-medium px-6 py-3 rounded-full hover:bg-primary/90 transition-all"
               >
-                Start tracing <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                {user ? "Go to Dashboard" : "Start tracing"}{" "}
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link 
-                href="/login" 
-                className="font-medium px-6 py-3 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Sign in
-              </Link>
+              {!user && (
+                <Link 
+                  href="/login" 
+                  className="font-medium px-6 py-3 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Sign in
+                </Link>
+              )}
             </motion.div>
           </div>
           

@@ -1,34 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe } from "@/components/ui/globe";
-import { Github, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Github, Mail, Lock, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGithubLoading, setIsGithubLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in or show error if OAuth failed
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        router.replace("/dashboard");
+      }
+    });
+
+    if (searchParams.get("error") === "auth_failed") {
+      setError("Authentication failed. Please try again.");
+    }
+  }, [router, searchParams, supabase]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login
-    setTimeout(() => {
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setError(error.message);
       setIsLoading(false);
-      router.push("/");
-    }, 1500);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   };
 
-  const handleGithubLogin = () => {
+  const handleGithubLogin = async () => {
     setIsGithubLoading(true);
-    // Simulate github login
-    setTimeout(() => {
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
       setIsGithubLoading(false);
-      router.push("/");
-    }, 1500);
+    }
+    // On success, browser redirects automatically — no need to setIsGithubLoading(false)
   };
 
   return (
@@ -55,6 +90,14 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
           <div className="relative">
+            {/* Error banner */}
+            {error && (
+              <div className="mb-4 flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-300 ml-1">Email</label>
@@ -63,6 +106,8 @@ export default function LoginPage() {
                   <input
                     type="email"
                     placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-10 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                     required
                   />
@@ -76,6 +121,8 @@ export default function LoginPage() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-10 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                     required
                   />
@@ -84,7 +131,10 @@ export default function LoginPage() {
 
               <div className="flex items-center justify-between mt-2 mb-6">
                 <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-                  <input type="checkbox" className="rounded border-gray-700 bg-white/5 text-primary focus:ring-primary/50" />
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-700 bg-white/5 text-primary focus:ring-primary/50"
+                  />
                   Remember me
                 </label>
                 <Link href="#" className="text-xs text-primary hover:text-primary/80 transition-colors">
